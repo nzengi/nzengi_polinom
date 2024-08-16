@@ -1,92 +1,95 @@
 #include <iostream>
 #include <vector>
-#include <cmath>
 #include <random>
+#include <functional>  // For hash
 
 class AdvancedPolynomialEncryption {
 private:
-    std::vector<int> coefficients;  // Coefficients of the polynomial
-    int p;  // Prime number for modular arithmetic
+    std::vector<int> coefficients;  // Dynamic coefficients of the polynomial
+    std::vector<int> moduli;  // Multiple modulus values for added security
 
 public:
-    // Constructor to initialize polynomial coefficients and modulus
-    AdvancedPolynomialEncryption(const std::vector<int>& coeffs, int p) : coefficients(coeffs), p(p) {}
+    // Constructor to initialize polynomial coefficients and modulus values
+    AdvancedPolynomialEncryption(const std::vector<int>& coeffs, const std::vector<int>& mods)
+        : coefficients(coeffs), moduli(mods) {}
 
-    // Function to generate dynamic keys (e.g., random values)
-    std::vector<int> generateDynamicKeys(int size) {
-        std::vector<int> keys(size);
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> distr(1, p - 1);  // Generate random values in range [1, p-1]
+    // Function to generate dynamic coefficients based on a hash of the key
+    std::vector<int> generateDynamicCoefficients(const std::string& key) {
+        std::hash<std::string> hash_fn;
+        size_t hash_value = hash_fn(key);
 
-        for (int i = 0; i < size; ++i) {
-            keys[i] = distr(gen);
+        std::vector<int> dynamic_coefficients(coefficients.size());
+        for (size_t i = 0; i < coefficients.size(); ++i) {
+            dynamic_coefficients[i] = (coefficients[i] + hash_value) % moduli[i];
         }
-        return keys;
+        return dynamic_coefficients;
     }
 
-    // Encryption function
-    int encrypt(const std::vector<int>& variables) {
-        int result = 0;
+    // Encryption function with multiple moduli
+    std::vector<int> encrypt(const std::vector<int>& variables, const std::string& key) {
+        std::vector<int> encrypted_values(moduli.size());
+        std::vector<int> dynamic_coefficients = generateDynamicCoefficients(key);
 
-        // Compute the polynomial using the provided variables
-        for (size_t i = 0; i < coefficients.size() && i < variables.size(); ++i) {
-            result += coefficients[i] * pow(variables[i], 2);  // Example with squared variables
-        }
-
-        // Apply modular arithmetic
-        result %= p;
-        return (result < 0) ? result + p : result;
-    }
-
-    // Decryption function
-    int decrypt(int encrypted_value, const std::vector<int>& variables) {
-        // Perform modular inversion of the encryption process
-        int original_value = 0;
-        for (size_t i = 0; i < coefficients.size() && i < variables.size(); ++i) {
-            original_value += coefficients[i] * pow(variables[i], 2);  // Reverse the polynomial calculation
+        // Compute the polynomial using the provided variables and dynamic coefficients
+        for (size_t j = 0; j < moduli.size(); ++j) {
+            int result = 0;
+            for (size_t i = 0; i < dynamic_coefficients.size() && i < variables.size(); ++i) {
+                result += dynamic_coefficients[i] * pow(variables[i], 2);  // Example with squared variables
+            }
+            // Apply modular arithmetic for each modulus
+            encrypted_values[j] = result % moduli[j];
+            encrypted_values[j] = (encrypted_values[j] < 0) ? encrypted_values[j] + moduli[j] : encrypted_values[j];
         }
 
-        original_value %= p;
-        return (original_value < 0) ? original_value + p : original_value;
+        return encrypted_values;
     }
 
-    // Homomorphic addition
-    int homomorphicAdd(int encrypted_value1, int encrypted_value2) {
-        return (encrypted_value1 + encrypted_value2) % p;
-    }
+    // Decryption function with multiple moduli
+    std::vector<int> decrypt(const std::vector<int>& encrypted_values, const std::vector<int>& variables, const std::string& key) {
+        std::vector<int> decrypted_values(moduli.size());
+        std::vector<int> dynamic_coefficients = generateDynamicCoefficients(key);
 
-    // Homomorphic multiplication
-    int homomorphicMultiply(int encrypted_value1, int encrypted_value2) {
-        return (encrypted_value1 * encrypted_value2) % p;
+        for (size_t j = 0; j < moduli.size(); ++j) {
+            int original_value = 0;
+            for (size_t i = 0; i < dynamic_coefficients.size() && i < variables.size(); ++i) {
+                original_value += dynamic_coefficients[i] * pow(variables[i], 2);  // Reverse the polynomial calculation
+            }
+
+            // Apply modular arithmetic for each modulus
+            decrypted_values[j] = original_value % moduli[j];
+            decrypted_values[j] = (decrypted_values[j] < 0) ? decrypted_values[j] + moduli[j] : decrypted_values[j];
+        }
+
+        return decrypted_values;
     }
 };
 
 int main() {
-    // Define the polynomial coefficients and the modulus value
-    std::vector<int> coefficients = {3, 5, 7, 9};  // Example coefficients for the polynomial
-    int p = 29;  // A larger prime number for modular arithmetic
+    // Define the base polynomial coefficients and multiple modulus values
+    std::vector<int> coefficients = {3, 5, 7, 9};  // Example base coefficients
+    std::vector<int> moduli = {29, 31, 37};  // Multiple modulus values for added security
 
-    AdvancedPolynomialEncryption polyEnc(coefficients, p);
+    AdvancedPolynomialEncryption polyEnc(coefficients, moduli);
 
-    // Generate dynamic keys (could be used as variables in the polynomial)
-    std::vector<int> variables = polyEnc.generateDynamicKeys(coefficients.size());
+    // Example key and variables for encryption
+    std::string key = "abc123";
+    std::vector<int> variables = {5, 7, 3, 4};  // Example variables
 
     // Encryption process
-    int encrypted_value = polyEnc.encrypt(variables);
-    std::cout << "Encrypted Value: " << encrypted_value << std::endl;
+    std::vector<int> encrypted_values = polyEnc.encrypt(variables, key);
+    std::cout << "Encrypted Values: ";
+    for (int val : encrypted_values) {
+        std::cout << val << " ";
+    }
+    std::cout << std::endl;
 
     // Decryption process
-    int decrypted_value = polyEnc.decrypt(encrypted_value, variables);
-    std::cout << "Decrypted Value: " << decrypted_value << std::endl;
-
-    // Example of homomorphic operations
-    int encrypted_value2 = polyEnc.encrypt(variables);
-    int sum = polyEnc.homomorphicAdd(encrypted_value, encrypted_value2);
-    std::cout << "Homomorphic Addition Result: " << sum << std::endl;
-
-    int product = polyEnc.homomorphicMultiply(encrypted_value, encrypted_value2);
-    std::cout << "Homomorphic Multiplication Result: " << product << std::endl;
+    std::vector<int> decrypted_values = polyEnc.decrypt(encrypted_values, variables, key);
+    std::cout << "Decrypted Values: ";
+    for (int val : decrypted_values) {
+        std::cout << val << " ";
+    }
+    std::cout << std::endl;
 
     return 0;
 }
