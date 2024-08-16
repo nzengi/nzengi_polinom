@@ -2,11 +2,12 @@
 #include <bitset>
 #include <string>
 #include <vector>
+#include <cmath>
 
 class BinaryEncryption {
 private:
-    std::vector<int> coefficients;  // Dynamic coefficients of the polynomial
-    int p;  // Modulus value for modular arithmetic
+    std::vector<int> coefficients;  // Coefficients of the polynomial
+    int p;  // Prime number for modular arithmetic
 
 public:
     // Constructor to initialize polynomial coefficients and modulus
@@ -63,33 +64,36 @@ public:
         return hex;
     }
 
-    // Encryption function (example using binary)
-    std::string encrypt(const std::string& binary_input) {
+    // Encryption function using polynomial and binary input
+    int encrypt(const std::string& binary_input) {
         int result = 0;
-        
-        // Simple encryption logic using binary (can be expanded)
-        for (size_t i = 0; i < binary_input.length(); ++i) {
+
+        // Ensure binary_input length matches coefficients size, if not adjust accordingly
+        size_t len = std::min(binary_input.size(), coefficients.size());
+
+        // Compute the polynomial using binary input
+        for (size_t i = 0; i < len; ++i) {
             if (binary_input[i] == '1') {
-                result += coefficients[i % coefficients.size()];
+                result += coefficients[i] * pow(2, i);  // Use the binary position as exponent
             }
         }
 
+        // Apply modular arithmetic
         result %= p;
-        return std::bitset<16>(result).to_string();  // Convert the result to binary format
+        return result;
     }
 
-    // Decryption function (example using binary)
-    std::string decrypt(const std::string& encrypted_binary) {
-        int result = std::bitset<16>(encrypted_binary).to_ulong();  // Convert binary to integer
-        
-        // Simple decryption logic (reverse of encryption)
-        return std::bitset<16>(result).to_string();  // Return binary string as result
+    // Decryption function (reverse of encryption)
+    int decrypt(int encrypted_value) {
+        // The decryption logic should reverse the encryption process
+        // Assuming a simple modular inverse here (depending on the complexity of the encryption)
+        return encrypted_value % p;  // This is a simplified version for demonstration
     }
 };
 
 int main() {
     // Define polynomial coefficients and modulus value
-    std::vector<int> coefficients = {3, 5, 7, 9};  // Example coefficients for the polynomial
+    std::vector<int> coefficients = {3, 5, 7, 9, 11};  // Example coefficients for the polynomial
     int p = 29;  // Prime number for modular arithmetic
 
     BinaryEncryption binEnc(coefficients, p);
@@ -102,16 +106,13 @@ int main() {
     std::cout << "Binary Input: " << binary_input << std::endl;
 
     // Encryption process
-    std::string encrypted_binary = binEnc.encrypt(binary_input);
-    std::cout << "Encrypted Binary: " << encrypted_binary << std::endl;
+    int encrypted_value = binEnc.encrypt(binary_input);
+    std::cout << "Encrypted Value (Decimal): " << encrypted_value << std::endl;
 
     // Decryption process
-    std::string decrypted_binary = binEnc.decrypt(encrypted_binary);
-    std::cout << "Decrypted Binary: " << decrypted_binary << std::endl;
+    int decrypted_value = binEnc.decrypt(encrypted_value);
+    std::cout << "Decrypted Value (Decimal): " << decrypted_value << std::endl;
 
-    // Convert decrypted binary back to hex
-    std::string decrypted_hex = binEnc.binaryToHex(decrypted_binary);
-    std::cout << "Decrypted Hex: " << decrypted_hex << std::endl;
-
+    // Optionally, convert decrypted value back to hex or binary format
     return 0;
 }
