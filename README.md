@@ -1,0 +1,1 @@
+# nzengi_polinom_teori
