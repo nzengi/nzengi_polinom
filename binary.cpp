@@ -3,15 +3,48 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <stdexcept>
 
 class BinaryEncryption {
 private:
     std::vector<int> coefficients;  // Coefficients of the polynomial
     int p;  // Prime number for modular arithmetic
 
+    // Helper function to calculate modular inverse using Extended Euclidean Algorithm
+    int modularInverse(int a, int mod) {
+        int m0 = mod, t, q;
+        int x0 = 0, x1 = 1;
+
+        if (mod == 1)
+            return 0;
+
+        while (a > 1) {
+            // q is quotient
+            q = a / mod;
+            t = mod;
+
+            // mod is remainder now, process same as Euclid's algo
+            mod = a % mod, a = t;
+
+            t = x0;
+            x0 = x1 - q * x0;
+            x1 = t;
+        }
+
+        // Make x1 positive
+        if (x1 < 0)
+            x1 += m0;
+
+        return x1;
+    }
+
 public:
     // Constructor to initialize polynomial coefficients and modulus
-    BinaryEncryption(const std::vector<int>& coeffs, int p) : coefficients(coeffs), p(p) {}
+    BinaryEncryption(const std::vector<int>& coeffs, int p) : coefficients(coeffs), p(p) {
+        if (p <= 0) {
+            throw std::invalid_argument("Modulus p must be a positive integer.");
+        }
+    }
 
     // Function to convert a hexadecimal string to binary
     std::string hexToBinary(const std::string& hex) {
@@ -34,6 +67,8 @@ public:
                 case 'd': case 'D': binary += "1101"; break;
                 case 'e': case 'E': binary += "1110"; break;
                 case 'f': case 'F': binary += "1111"; break;
+                default:
+                    throw std::invalid_argument("Invalid hexadecimal character.");
             }
         }
         return binary;
@@ -41,6 +76,10 @@ public:
 
     // Function to convert binary string to hexadecimal
     std::string binaryToHex(const std::string& binary) {
+        if (binary.length() % 4 != 0) {
+            throw std::invalid_argument("Binary string length must be a multiple of 4.");
+        }
+
         std::string hex;
         for (size_t i = 0; i < binary.length(); i += 4) {
             std::string nibble = binary.substr(i, 4);
@@ -85,34 +124,36 @@ public:
 
     // Decryption function (reverse of encryption)
     int decrypt(int encrypted_value) {
-        // The decryption logic should reverse the encryption process
-        // Assuming a simple modular inverse here (depending on the complexity of the encryption)
-        return encrypted_value % p;  // This is a simplified version for demonstration
+        // Apply modular inverse if needed (this is a placeholder, real decryption logic may differ)
+        return (encrypted_value * modularInverse(1, p)) % p;  // Simplified version
     }
 };
 
 int main() {
-    // Define polynomial coefficients and modulus value
-    std::vector<int> coefficients = {3, 5, 7, 9, 11};  // Example coefficients for the polynomial
-    int p = 29;  // Prime number for modular arithmetic
+    try {
+        // Define polynomial coefficients and modulus value
+        std::vector<int> coefficients = {3, 5, 7, 9, 11};  // Example coefficients for the polynomial
+        int p = 29;  // Prime number for modular arithmetic
 
-    BinaryEncryption binEnc(coefficients, p);
+        BinaryEncryption binEnc(coefficients, p);
 
-    // Example hexadecimal input (7-digit)
-    std::string hex_input = "1a2f3b";
+        // Example hexadecimal input (7-digit)
+        std::string hex_input = "1a2f3b";
 
-    // Convert hex to binary
-    std::string binary_input = binEnc.hexToBinary(hex_input);
-    std::cout << "Binary Input: " << binary_input << std::endl;
+        // Convert hex to binary
+        std::string binary_input = binEnc.hexToBinary(hex_input);
+        std::cout << "Binary Input: " << binary_input << std::endl;
 
-    // Encryption process
-    int encrypted_value = binEnc.encrypt(binary_input);
-    std::cout << "Encrypted Value (Decimal): " << encrypted_value << std::endl;
+        // Encryption process
+        int encrypted_value = binEnc.encrypt(binary_input);
+        std::cout << "Encrypted Value (Decimal): " << encrypted_value << std::endl;
 
-    // Decryption process
-    int decrypted_value = binEnc.decrypt(encrypted_value);
-    std::cout << "Decrypted Value (Decimal): " << decrypted_value << std::endl;
+        // Decryption process
+        int decrypted_value = binEnc.decrypt(encrypted_value);
+        std::cout << "Decrypted Value (Decimal): " << decrypted_value << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 
-    // Optionally, convert decrypted value back to hex or binary format
     return 0;
 }
